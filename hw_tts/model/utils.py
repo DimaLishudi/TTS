@@ -60,3 +60,12 @@ def get_attn_key_pad_mask(seq_k, seq_q, pad):
         1).expand(-1, len_q, -1)  # b x lq x lk
 
     return padding_mask
+
+def get_mask_from_lengths(lengths, max_len=None):
+    if max_len == None:
+        max_len = torch.max(lengths).item()
+
+    ids = torch.arange(0, max_len, 1, device=lengths.device)
+    mask = (ids < lengths.unsqueeze(1)).bool()
+
+    return mask

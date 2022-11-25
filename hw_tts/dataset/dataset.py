@@ -1,6 +1,7 @@
 from text import text_to_sequence
 import numpy as np
 import torch
+import torch.nn.functional as F
 from time import perf_counter
 from tqdm.auto import tqdm
 

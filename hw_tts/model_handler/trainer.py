@@ -1,20 +1,17 @@
 import torch
 from torch.optim.lr_scheduler  import OneCycleLR
-import hw_tts.model, hw_tts.loss, hw_tts.dataset
-from logger import WanDBWriter
+import hw_tts.loss
 from tqdm.auto import tqdm
 import os
+from generator import TTSGenerator
 
-
-class Trainer():
+class TTSTrainer(TTSGenerator):
+    """
+        Class to generate voice by text and train FastSpeech 1/2 TTS model
+        holds FastSpeech 1/2 TTS model and WaveGlow vocoder
+    """
     def __init__(self, config):
-        self.config = config
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        self.dataloader = hw_tts.dataset.get_LJSpeech_dataloader(config['dataset'])
-
-        self.model = getattr(hw_tts.model, config['model']['type'])(**dict(config['model']['args']))
-        self.model = self.model.to(self.device)
+        super().__init__(config, log=True)
 
         self.Loss = getattr(hw_tts.loss, config['loss'])()
 
@@ -25,17 +22,13 @@ class Trainer():
             betas=config['optimizer']['betas'],
             eps=1e-9
         )
-
         scheduler_kwargs = dict(config['scheduler']) | {
             "steps_per_epoch": len(self.dataloader) * config['dataset']['batch_expand_size'],
             "epochs": config['trainer']['epochs'],
             "max_lr": config['trainer']['learning_rate'],
         }
-
         self.scheduler = OneCycleLR(self.optimizer, **scheduler_kwargs)
 
-        self.current_step = 0
-        self.logger = WanDBWriter()
 
     def train_loop(self):
         epochs = self.config['trainer']['epochs']
@@ -80,7 +73,6 @@ class Trainer():
                     self.logger.add_scalar("duration_loss", d_l)
                     self.logger.add_scalar("mel_loss", m_l)
                     self.logger.add_scalar("total_loss", t_l)
-
                     # Backward
                     self.optimizer.zero_grad(set_to_none=True)
                     total_loss.backward()
@@ -96,3 +88,6 @@ class Trainer():
                         torch.save({'model': self.model.state_dict(), 'optimizer': self.optimizer.state_dict(
                         )}, os.path.join(self.config['trainer']['save_dir'], 'checkpoint_%d.pth.tar' % self.current_step))
                         print("save model at step %d ..." % self.current_step)
+
+                    if self.current_step % self.config['trainer']['validate_step'] == 0:
+                        self.generate()
