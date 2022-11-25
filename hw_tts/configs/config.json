@@ -1,0 +1,74 @@
+{
+    "name": "FastSpeech1",
+    "preprocessing": {
+      "sr": 16000,
+      "spectrogram": {
+        "type": "MelSpectrogram",
+        "args": {
+        }
+      },
+      "log_spec" : true
+    },
+    "model" : {
+      "type" : "FastSpeech1",
+      "args" : {
+        "vocab_size" : 300,
+        "max_seq_len" : 3000,
+        "encoder_dim" : 256,
+        "encoder_n_layer" : 4,
+        "encoder_head" : 2,
+        "encoder_conv1d_filter_size" : 1024,
+        "decoder_dim" : 256,
+        "decoder_n_layer" : 4,
+        "decoder_head" : 2,
+        "decoder_conv1d_filter_size" : 1024,
+
+        "fft_conv1d_kernel" : [9, 1],
+        "fft_conv1d_padding" : [4, 0],
+
+        "duration_predictor_filter_size" : 256,
+        "duration_predictor_kernel_size" : 3,
+        "dropout" : 0.1,
+
+        "PAD" : 0,
+        "UNK" : 1,
+        "BOS" : 2,
+        "EOS" : 3,
+
+        "PAD_WORD" : "<blank>",
+        "UNK_WORD" : "<unk>",
+        "BOS_WORD" : "<s>",
+        "EOS_WORD" : "</s>"
+      }
+    },
+    "dataset": {
+        "batch_size" : 16,
+        "batch_expand_size" : 32,
+        "num_workers": 2,
+        "mel_ground_truth" : "./mels",
+        "alignment_path" : "./alignments",
+        "data_path" : "./data/train.txt"
+    },
+    "optimizer": {
+      "weight_decay": 1e-6,
+      "betas" : [0.9, 0.98]
+    },
+    "loss_type": "FS1Loss",
+    "lr_scheduler": {
+      "type": "OneCycleLR",
+      "args": {
+        "anneal_strategy": "cos",
+        "pct_start": 0.1
+      }
+    },
+    "trainer": {
+      "epochs" : 2000,
+      "learning_rate" : 1e-3,
+      "save_dir" : "saved/",
+      "save_step" : 3000,
+      "log_step" : 5,
+      "verbosity" : 2,
+      "wandb_project": "TTS",
+      "grad_clip_thresh" : 1.0
+    }
+}

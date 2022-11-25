@@ -1,2 +1,5 @@
-from .logger import *
-from .visualization import *
+from wandb_writer import WanDBWriter
+
+__all__ = [
+    WanDBWriter
+]
