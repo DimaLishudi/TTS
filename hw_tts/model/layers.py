@@ -33,8 +33,8 @@ class ScaledDotProductAttention(nn.Module):
         return output, attn
 
 
-class MultiHeadAttention(nn.Module):
-    ''' Multi-Head Attention module '''
+class MultiHeadSelfAttention(nn.Module):
+    ''' Multi-Head Self Attention module '''
 
     def __init__(self, n_head, d_model, d_k, d_v, dropout=0.1):
         super().__init__()
@@ -68,32 +68,32 @@ class MultiHeadAttention(nn.Module):
         nn.init.normal_(self.w_vs.weight, mean=0,
                         std=np.sqrt(2.0 / (self.d_model + self.d_v))) 
         
-    def forward(self, q, k, v, mask=None):
+    def forward(self, x, mask=None):
         d_k, d_v, n_head = self.d_k, self.d_v, self.n_head
 
-        sz_b, len_q, _ = q.size()
-        sz_b, len_k, _ = k.size()
-        sz_b, len_v, _ = v.size()
+        sz_b, len_x, _ = x.size()
 
-        residual = q
+        residual = x
 
-        q = self.w_qs(q).view(sz_b, len_q, n_head, d_k)
-        k = self.w_ks(k).view(sz_b, len_k, n_head, d_k)
-        v = self.w_vs(v).view(sz_b, len_v, n_head, d_v)
+        x = self.layer_norm(x)
 
-        q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, d_k)  # (n*b) x lq x dk
-        k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, d_k)  # (n*b) x lk x dk
-        v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v)  # (n*b) x lv x dv
+        q = self.w_qs(x).view(sz_b, len_x, n_head, d_k)
+        k = self.w_ks(x).view(sz_b, len_x, n_head, d_k)
+        v = self.w_vs(x).view(sz_b, len_x, n_head, d_v)
+
+        q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_x, d_k)  # (n*b) x lq x dk
+        k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_x, d_k)  # (n*b) x lk x dk
+        v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_x, d_v)  # (n*b) x lv x dv
         
         if mask is not None:
             mask = mask.repeat(n_head, 1, 1)  # (n*b) x .. x ..
         output, attn = self.attention(q, k, v, mask=mask)
 
-        output = output.view(n_head, sz_b, len_q, d_v)
-        output = output.permute(1, 2, 0, 3).contiguous().view(sz_b, len_q, -1)  # b x lq x (n*dv)
+        output = output.view(n_head, sz_b, len_x, d_v)
+        output = output.permute(1, 2, 0, 3).contiguous().view(sz_b, len_x, -1)  # b x lq x (n*dv)
 
         output = self.dropout(self.fc(output))
-        output = self.layer_norm(output + residual)
+        output = output + residual
 
         return output, attn
 
@@ -117,11 +117,11 @@ class PositionwiseFeedForward(nn.Module):
 
     def forward(self, x):
         residual = x
-        output = x.transpose(1, 2)
+        output = self.layer_norm(x).transpose(1, 2)
         output = self.w_2(F.relu(self.w_1(output)))
         output = output.transpose(1, 2)
         output = self.dropout(output)
-        output = self.layer_norm(output + residual)
+        output = output + residual
 
         return output
 
@@ -138,7 +138,7 @@ class FFTBlock(nn.Module):
                  d_v,
                  dropout=0.1):
         super(FFTBlock, self).__init__()
-        self.slf_attn = MultiHeadAttention(
+        self.slf_attn = MultiHeadSelfAttention(
             n_head, d_model, d_k, d_v, dropout=dropout)
         self.pos_ffn = PositionwiseFeedForward(
             model_config, d_model, d_inner, dropout=dropout)
