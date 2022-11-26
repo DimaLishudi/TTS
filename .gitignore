@@ -103,12 +103,8 @@ ENV/
 .mypy_cache/
 
 # input data, saved log, checkpoints
-alignments/
-audio/
 data/
-mels/
-text/
-waveglow/
+FS_utils/
 input/
 saved/
 wandb/
