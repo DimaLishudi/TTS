@@ -1,4 +1,4 @@
-from text import text_to_sequence
+from hw_tts.FS_utils.text import text_to_sequence
 import numpy as np
 import torch
 import torch.nn.functional as F

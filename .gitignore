@@ -104,10 +104,11 @@ ENV/
 
 # input data, saved log, checkpoints
 data/
-FS_utils/
 input/
 saved/
 wandb/
+*.pt
+*.ipynb
 
 # container
 .devcontainer

@@ -1,4 +1,4 @@
-from wandb_writer import WanDBWriter
+from .wandb_writer import WanDBWriter
 
 __all__ = [
     WanDBWriter

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class FastSpeechLoss(nn.Module):
+class FastSpeech2Loss(nn.Module):
     def __init__(self):
         super().__init__()
         self.mse_loss = nn.MSELoss()

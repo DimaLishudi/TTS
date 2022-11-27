@@ -1,12 +1,11 @@
 import numpy as np
 import torch
 import hw_tts.dataset, hw_tts.model
-from logger import WanDBWriter
+from hw_tts.logger import WanDBWriter
 from tqdm.auto import tqdm
 import os
 
-# TODO:
-# import utils, text, waveglow
+from ..FS_utils import text, utils, waveglow
 
 
 class TTSGenerator():
