@@ -111,6 +111,8 @@ def get_data_to_buffer(dataset_config):
 
         character = torch.from_numpy(character)
         duration = torch.from_numpy(duration)
+        pitch = torch.from_numpy(pitch)
+        energy = torch.from_numpy(energy)
         mel_gt_target = torch.from_numpy(mel_gt_target)
 
         buffer.append({"text": character,
@@ -133,8 +135,6 @@ def reprocess_tensor(batch, cut_list):
     pitches = [batch[ind]["pitch"] for ind in cut_list]
     energies = [batch[ind]["energy"] for ind in cut_list]
 
-    
-
     length_text = np.array([])
     for text in texts:
         length_text = np.append(length_text, text.size(0))
@@ -152,12 +152,6 @@ def reprocess_tensor(batch, cut_list):
 
     mel_pos = list()
     max_mel_len = int(max(length_mel))
-    for length_mel_row in length_mel:
-        mel_pos.append(np.pad([i+1 for i in range(int(length_mel_row))],
-                              (0, max_mel_len-int(length_mel_row)), 'constant'))
-    mel_pos = torch.from_numpy(np.array(mel_pos))
-
-    
     for length_mel_row in length_mel:
         mel_pos.append(np.pad([i+1 for i in range(int(length_mel_row))],
                               (0, max_mel_len-int(length_mel_row)), 'constant'))

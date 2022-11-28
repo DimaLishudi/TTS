@@ -62,8 +62,6 @@ class TTSGenerator():
         else:
             self.energies_list = np.ones(len(self.text_list))
 
-        self.input_zip = zip(self.text_list, self.alphas_list, self.pitches_list, self.energies_list)
-
 
     def synthesis(self, input, alpha=1.0, pitch=1.0, energy=1.0):
         input = np.array(input)
@@ -84,7 +82,9 @@ class TTSGenerator():
             return
         self.model.eval()
 
-        for i, (input, alpha, pitch, energy) in tqdm(enumerate(self.input_zip)):
+
+        input_zip = zip(self.text_list, self.alphas_list, self.pitches_list, self.energies_list)
+        for i, (input, alpha, pitch, energy) in tqdm(enumerate(input_zip)):
             alpha = round(alpha, 2)
             pitch = round(pitch, 2)
             energy = round(energy, 2)
@@ -95,7 +95,7 @@ class TTSGenerator():
             if 'results_dir' in self.config['generator']:
                 res_path = self.res_dir + f"/out_{i}_d={alpha}_p={pitch}_e={energy}.wav"
             else:
-                './tmp.wav'
+                res_path = './tmp.wav'
             waveglow.inference.inference(
                 mel, self.waveglow_model,
                 res_path

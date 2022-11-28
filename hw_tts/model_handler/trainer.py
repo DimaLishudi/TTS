@@ -28,6 +28,7 @@ class TTSTrainer(TTSGenerator):
             "max_lr": config['trainer']['learning_rate'],
         }
         self.scheduler = OneCycleLR(self.optimizer, **scheduler_kwargs)
+        os.makedirs(self.config['trainer']['save_dir'], exists_ok=True)
 
 
     def train_loop(self):
@@ -107,3 +108,9 @@ class TTSTrainer(TTSGenerator):
                     if (self.current_step+1) % self.config['trainer']['val_step'] == 0:
                         self.generate()
                         self.model.train()
+
+        
+        if (self.current_step+1) % self.config['trainer']['save_step'] == 0:
+            torch.save({'model': self.model.state_dict(), 'optimizer': self.optimizer.state_dict(
+            )}, os.path.join(self.config['trainer']['save_dir'], 'checkpoint_final.pth.tar'))
+            print("save final model")
