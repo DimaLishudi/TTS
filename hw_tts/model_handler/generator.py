@@ -43,10 +43,10 @@ class TTSGenerator():
         # prepare inputs ====================================================================
 
         if hasattr(self.config['generator'], 'results_dir'):
-            res_dir = self.config['generator']['results_dir']
+            self.res_dir = self.config['generator']['results_dir']
         else:
-            res_dir = './results'
-        os.makedirs(res_dir, exist_ok=True)
+            self.res_dir = './results'
+        os.makedirs(self.res_dir, exist_ok=True)
 
         self.text_list = list(self.config['generator']['texts'])
 
@@ -95,7 +95,7 @@ class TTSGenerator():
             mel = self.synthesis(seq, alpha, pitch, energy)
 
             if 'results_dir' in self.config['generator']:
-                res_path = res_dir + f"/out_{i}_d={alpha}_p={pitch}_e={energy}.wav"
+                res_path = self.res_dir + f"/out_{i}_d={alpha}_p={pitch}_e={energy}.wav"
             else:
                 './tmp.wav'
             waveglow.inference.inference(
