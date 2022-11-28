@@ -60,7 +60,7 @@
       "epochs" : 62,
       "learning_rate" : 1e-3,
       "save_dir" : "fs2_saved/",
-      "save_step" : 50000,
+      "save_step" : 5000,
       "val_step" : 5000,
       "verbosity" : 2,
       "grad_clip_thresh" : 1.0
