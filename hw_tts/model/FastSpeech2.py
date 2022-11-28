@@ -34,7 +34,6 @@ class VarianceAdaptor(nn.Module):
         else:
             energy_min = -100
             energy_max = 100
-
         self.register_buffer('pitch_bins', torch.linspace(pitch_min, pitch_max, n_bins - 1))
         self.register_buffer('energy_bins', torch.linspace(energy_min, energy_max, n_bins - 1))
 
@@ -59,7 +58,7 @@ class VarianceAdaptor(nn.Module):
         else:
             energy = energy_pred * energy_coef
         pitch = self.pitch_embedding(torch.bucketize(pitch, self.pitch_bins))
-        energy = self.pitch_embedding(torch.bucketize(energy, self.energy_bins))
+        energy = self.energy_embedding(torch.bucketize(energy, self.energy_bins))
         output = output + pitch + energy
         return output, dur, pitch_pred, energy_pred
 

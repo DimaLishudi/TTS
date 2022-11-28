@@ -111,6 +111,7 @@ wandb/
 *.ipynb
 *.patch
 *.wav
+*.pth.tar
 
 # container
 .devcontainer
