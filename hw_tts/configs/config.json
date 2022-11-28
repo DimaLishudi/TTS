@@ -1,16 +1,8 @@
 {
     "name": "FastSpeech1",
-    "preprocessing": {
-      "sr": 16000,
-      "spectrogram": {
-        "type": "MelSpectrogram",
-        "args": {
-        }
-      },
-      "log_spec" : true
-    },
+    "sample_rate" : 22050,
     "model" : {
-      "type" : "FastSpeech1",
+      "type" : "FastSpeech",
       "args" : {
         "vocab_size" : 300,
         "max_seq_len" : 3000,
@@ -43,11 +35,14 @@
     },
     "dataset": {
         "batch_size" : 16,
-        "batch_expand_size" : 32,
-        "num_workers": 2,
-        "mel_ground_truth" : "./mels",
-        "alignment_path" : "./alignments",
-        "data_path" : "./data/train.txt"
+        "batch_expand_size" : 4,
+        "num_workers": 1,
+        "mel_ground_truth" : "./data/mels",
+        "pitch_ground_truth" : "./data/pitches",
+        "energy_ground_truth" : "./data/energies",
+        "alignment_path" : "./data/alignments",
+        "data_path" : "./data/train.txt",
+        "text_cleaners" : ["english_cleaners"]
     },
     "optimizer": {
       "weight_decay": 1e-6,
@@ -55,21 +50,16 @@
     },
     "loss_type": "FS1Loss",
     "lr_scheduler": {
-      "type": "OneCycleLR",
-      "args": {
-        "anneal_strategy": "cos",
-        "pct_start": 0.1
-      }
+      "anneal_strategy": "cos",
+      "pct_start": 0.1
     },
     "trainer": {
-      "epochs" : 2000,
+      "epochs" : 10,
       "learning_rate" : 1e-3,
       "save_dir" : "saved/",
-      "save_step" : 3000,
-      "log_step" : 5,
-      "val_step" : 50,
+      "save_step" : 1000,
+      "val_step" : 1000,
       "verbosity" : 2,
-      "wandb_project": "TTS",
       "grad_clip_thresh" : 1.0
     },
     "generator" : {
@@ -78,6 +68,12 @@
         "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
         "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
         "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space"
-      ]
+      ],
+      "alphas_list" : [0.8, 1, 1.2],
+      "pitches_list" : [0.8, 1, 1.2],
+      "energies_list" : [0.8, 1, 1.2]
+    },
+    "logger" : {
+      "wandb_project": "TTS"
     }
 }

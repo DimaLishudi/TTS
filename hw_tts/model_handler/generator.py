@@ -18,39 +18,29 @@ class TTSGenerator():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         self.dataloader = hw_tts.dataset.get_LJSpeech_dataloader(config['dataset'])
-
-        # TODO: reserve checkpoint in config
-        self.model = getattr(hw_tts.model, config['model']['type'])(**dict(config['model']['args']))
+        # prepare fastspeech model, vocoder ================================================
+        # TODO: alternative checkpoint in config
+        self.model = getattr(hw_tts.model, config['model']['type'])(config['model']['args'])
         if checkpoint_path is not None:
             self.model.load_state_dict(torch.load(checkpoint_path))
 
         self.model = self.model.to(self.device)
 
-        if config.has_key('generator'):
+        if 'generator' in config:
             self.waveglow_model = utils.get_WaveGlow().to(self.device)
             self.waveglow_model.eval()
         
         self.current_step = 0
-        self.logger = WanDBWriter() if log else None
+        self.logger = WanDBWriter(config) if log else None
 
+        # prepare cleaners ==================================================================
 
-    def synthesis(self, input, alpha=1.0, pitch=None, energy=None):
-        input = np.array(input)
-        input = np.stack([input])
-        src_pos = np.array([i+1 for i in range(input.shape[1])])
-        src_pos = np.stack([src_pos])
-        sequence = torch.from_numpy(input).long().to(self.config['device'])
-        src_pos = torch.from_numpy(src_pos).long().to(self.config['device'])
-        
-        with torch.no_grad():
-            mel = self.model.forward(sequence, src_pos, alpha=alpha)
-        return mel.contiguous().transpose(1, 2)
+        if 'dataset' in self.config:
+            self.text_cleaners = self.config['dataset']['text_cleaners']
+        else:
+            self.text_cleaners = self.config['text_cleaners']
 
-
-    def generate(self):
-        if not self.config.has_key('generator'):
-            return
-        self.model.eval()
+        # prepare inputs ====================================================================
 
         if hasattr(self.config['generator'], 'results_dir'):
             res_dir = self.config['generator']['results_dir']
@@ -58,23 +48,65 @@ class TTSGenerator():
             res_dir = './results'
         os.makedirs(res_dir, exist_ok=True)
 
-        data_list = list(self.config['generator']['texts'])
+        self.text_list = list(self.config['generator']['texts'])
 
-        if hasattr(self.config['generator'], 'alphas'):
-            alphas_list = torch.asaray(self.config['generator']['alphas'])
+        # get alpha/pitch/energy for synthesis, else set to 1
+        if 'alphas_list' in self.config['generator']:
+            self.alphas_list = torch.asarray(self.config['generator']['alphas_list'])
         else:
-            alphas_list = torch.ones(len(data_list), dtype=torch.long)
+            self.alphas_list = torch.ones(len(self.text_list), dtype=torch.long)
+        if 'pitches_list' in self.config['generator']:
+            self.pitches_list = torch.asarray(self.config['generator']['pitches_list'])
+        else:
+            self.pitches_list = torch.ones(len(self.text_list), dtype=torch.long)
+        if 'energies_list' in self.config['generator']:
+            self.energies_list = torch.asarray(self.config['generator']['energies_list'])
+        else:
+            self.energies_list = torch.ones(len(self.text_list), dtype=torch.long)
+
+        self.input_zip = zip(self.text_list, self.alphas_list, self.pitches_list, self.energies_list)
 
 
-        for i, (input, alpha) in tqdm(enumerate(zip(data_list, alphas_list))):
-            seq = text.text_to_sequence(input, self.config['text_cleaners'])
-            mel = self.synthesis(seq, alpha)
+    def synthesis(self, input, alpha=1.0, pitch=1.0, energy=1.0):
+        input = np.array(input)
+        input = np.stack([input])
+        src_pos = np.array([i+1 for i in range(input.shape[1])])
+        src_pos = np.stack([src_pos])
+        sequence = torch.from_numpy(input).long().to(self.device)
+        src_pos = torch.from_numpy(src_pos).long().to(self.device)
+        
+        with torch.no_grad():
+            mel = self.model.forward(sequence, src_pos, alpha=alpha, pitch=pitch, energy=energy)
+        return mel.contiguous().transpose(1, 2)
 
-            
+
+    @torch.inference_mode()
+    def generate(self):
+        if 'generator' not in self.config:
+            return
+        self.model.eval()
+
+        for i, (input, alpha, pitch, energy) in tqdm(enumerate(self.input_zip)):
+            alpha = round(alpha, 2)
+            pitch = round(pitch, 2)
+            energy = round(energy, 2)
+    
+            seq = text.text_to_sequence(input, self.text_cleaners)
+            mel = self.synthesis(seq, alpha, pitch, energy)
+
+            if 'results_dir' in self.config['generator']:
+                res_path = res_dir + f"/out_{i}_d={alpha}_p={pitch}_e={energy}.wav"
+            else:
+                './tmp.wav'
             waveglow.inference.inference(
                 mel, self.waveglow_model,
-                res_dir + f"/out_{i}_{alpha}.wav"
+                res_path
             )
-
-            self.logger.add_spectrogram(input, mel)
+            name = f'input_{i}_d={alpha}_p={pitch}_e={energy}'
+            caption = input + '\t' + f'd={alpha}_p={pitch}_e={energy}'
+            self.logger.add_audio('audio ' + name, res_path, caption=caption)
+            self.logger.add_spectrogram('spec ' + name, mel, caption=caption)
+        
+        if 'results_dir' not in self.config['generator']:
+            os.remove('./tmp.wav')
 

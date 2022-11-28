@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import layers
-import utils
+from . import layers
+from . import utils
 
 
 
@@ -13,9 +13,7 @@ class LengthRegulator(nn.Module):
 
     def __init__(self, model_config):
         super(LengthRegulator, self).__init__()
-        self.duration_predictor = layers.DurationPredictor(model_config['duration'])
-        self.pitch_predictor = layers.DurationPredictor(model_config['pitch'])
-        self.energy_predictor = layers.DurationPredictor(model_config['energy'])
+        self.duration_predictor = layers.DurationPredictor(model_config)
 
     def LR(self, x, duration_predictor_output, mel_max_length=None):
         expand_max_len = torch.max(
@@ -50,30 +48,31 @@ class Encoder(nn.Module):
     def __init__(self, model_config):
         super(Encoder, self).__init__()
         
-        len_max_seq=model_config.max_seq_len
+        len_max_seq=model_config['max_seq_len']
         n_position = len_max_seq + 1
-        n_layers = model_config.encoder_n_layer
-        self.pad = model_config.pad
+        n_layers = model_config['encoder_n_layer']
+        self.pad = model_config['PAD']
 
         self.src_word_emb = nn.Embedding(
-            model_config.vocab_size,
-            model_config.encoder_dim,
-            padding_idx=model_config.PAD
+            model_config['vocab_size'],
+            model_config['encoder_dim'],
+            padding_idx=model_config['PAD']
         )
 
         self.position_enc = nn.Embedding(
             n_position,
-            model_config.encoder_dim,
-            padding_idx=model_config.PAD
+            model_config['encoder_dim'],
+            padding_idx=model_config['PAD']
         )
 
         self.layer_stack = nn.ModuleList([layers.FFTBlock(
-            model_config.encoder_dim,
-            model_config.encoder_conv1d_filter_size,
-            model_config.encoder_head,
-            model_config.encoder_dim // model_config.encoder_head,
-            model_config.encoder_dim // model_config.encoder_head,
-            dropout=model_config.dropout
+            model_config,
+            model_config['encoder_dim'],
+            model_config['encoder_conv1d_filter_size'],
+            model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            dropout=model_config['dropout']
         ) for _ in range(n_layers)])
 
     def forward(self, src_seq, src_pos, return_attns=False):
@@ -106,24 +105,25 @@ class Decoder(nn.Module):
 
         super(Decoder, self).__init__()
 
-        len_max_seq=model_config.max_seq_len
+        len_max_seq=model_config['max_seq_len']
         n_position = len_max_seq + 1
-        n_layers = model_config.decoder_n_layer
-        self.pad = model_config.pad
+        n_layers = model_config['decoder_n_layer']
+        self.pad = model_config['PAD']
 
         self.position_enc = nn.Embedding(
             n_position,
-            model_config.encoder_dim,
-            padding_idx=model_config.PAD,
+            model_config['encoder_dim'],
+            padding_idx=model_config['PAD'],
         )
 
         self.layer_stack = nn.ModuleList([layers.FFTBlock(
-            model_config.encoder_dim,
-            model_config.encoder_conv1d_filter_size,
-            model_config.encoder_head,
-            model_config.encoder_dim // model_config.encoder_head,
-            model_config.encoder_dim // model_config.encoder_head,
-            dropout=model_config.dropout
+            model_config,
+            model_config['encoder_dim'],
+            model_config['encoder_conv1d_filter_size'],
+            model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            dropout=model_config['dropout']
         ) for _ in range(n_layers)])
 
     def forward(self, enc_seq, enc_pos, return_attns=False):
@@ -147,3 +147,37 @@ class Decoder(nn.Module):
 
         return dec_output
     
+
+class FastSpeech2(nn.Module):
+    """ FastSpeech2 """
+
+    def __init__(self, model_config):
+        super(FastSpeech2, self).__init__()
+        n_mels = 80
+
+        self.encoder = Encoder(model_config)
+        self.length_regulator = LengthRegulator(model_config)
+        self.decoder = Decoder(model_config)
+
+        self.mel_linear = nn.Linear(model_config['decoder_dim'], n_mels)
+
+    def mask_tensor(self, mel_output, position, mel_max_length):
+        lengths = torch.max(position, -1)[0]
+        mask = ~utils.get_mask_from_lengths(lengths, max_len=mel_max_length)
+        mask = mask.unsqueeze(-1).expand(-1, -1, mel_output.size(-1))
+        return mel_output.masked_fill(mask, 0.)
+
+    def forward(self, src_seq, src_pos, mel_pos=None, mel_max_length=None, length_target=None, alpha=1.0):
+        encoder_out = self.encoder(src_seq, src_pos)
+        if self.training:
+            lr_output, duration_predictor_output = self.length_regulator(encoder_out, alpha, length_target, mel_max_length)
+            output = self.decoder(lr_output, mel_pos)
+            output = self.mask_tensor(output, mel_pos, mel_max_length)
+            output = self.mel_linear(output)
+            return output, duration_predictor_output
+        
+        lr_output, mel_pos = self.length_regulator(encoder_out, alpha, length_target, mel_max_length)
+        output = self.decoder(lr_output, mel_pos)
+        output = self.mel_linear(output)
+        return output
+

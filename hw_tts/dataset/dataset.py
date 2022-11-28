@@ -94,7 +94,7 @@ def get_data_to_buffer(dataset_config):
     for i in tqdm(range(len(text))):
 
         mel_gt_name = os.path.join(
-            dataset_config['mel_ground_truth'], "ljspeech-mel-%05d.npy" % (i+1))
+            dataset_config['mel_ground_truth'], "ljspeech-mel-%05d.npy" % (i))
         mel_gt_target = np.load(mel_gt_name)
         duration = np.load(os.path.join(
             dataset_config['alignment_path'], str(i)+".npy"))
@@ -102,12 +102,23 @@ def get_data_to_buffer(dataset_config):
         character = np.array(
             text_to_sequence(character, dataset_config['text_cleaners']))
 
+        pitch_gt_name = os.path.join(
+            dataset_config['pitch_ground_truth'], "ljspeech-pitch-%05d.npy" % (i))
+        pitch_gt_target = np.load(pitch_gt_name)
+        energy_gt_name = os.path.join(
+            dataset_config['energy_ground_truth'], "ljspeech-energy-%05d.npy" % (i))
+        energy_gt_target = np.load(energy_gt_name)
+
         character = torch.from_numpy(character)
         duration = torch.from_numpy(duration)
         mel_gt_target = torch.from_numpy(mel_gt_target)
 
-        buffer.append({"text": character, "duration": duration,
-                       "mel_target": mel_gt_target})
+        buffer.append({"text": character,
+                       "duration": duration,
+                       "mel_target": mel_gt_target,
+                       "pitch_target" : pitch_gt_target,
+                       "energy_target" : energy_gt_target    
+        })
 
     end = perf_counter()
     print("cost {:.2f}s to load all data into buffer.".format(end-start))

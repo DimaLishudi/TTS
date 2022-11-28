@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import torch
+import json
 
 from hw_tts.model_handler import TTSGenerator
 
@@ -11,7 +12,9 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
 
-def main(config, weights):
+def main(config_path, weights):
+    with open(config_path) as config_file:
+        config = json.load(config_file)
     generator = TTSGenerator(config, checkpoint_path=weights)
     generator.generator()
 

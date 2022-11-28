@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import utils
+from . import utils
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -107,10 +107,10 @@ class PositionwiseFeedForward(nn.Module):
         # Use Conv1D
         # position-wise
         self.w_1 = nn.Conv1d(
-            d_in, d_hid, kernel_size=model_config.fft_conv1d_kernel[0], padding=model_config.fft_conv1d_padding[0])
+            d_in, d_hid, kernel_size=model_config['fft_conv1d_kernel'][0], padding=model_config['fft_conv1d_padding'][0])
         # position-wise
         self.w_2 = nn.Conv1d(
-            d_hid, d_in, kernel_size=model_config.fft_conv1d_kernel[1], padding=model_config.fft_conv1d_padding[1])
+            d_hid, d_in, kernel_size=model_config['fft_conv1d_kernel'][1], padding=model_config['fft_conv1d_padding'][1])
 
         self.layer_norm = nn.LayerNorm(d_in)
         self.dropout = nn.Dropout(dropout)
@@ -145,7 +145,7 @@ class FFTBlock(nn.Module):
 
     def forward(self, enc_input, non_pad_mask=None, slf_attn_mask=None):
         enc_output, enc_slf_attn = self.slf_attn(
-            enc_input, enc_input, enc_input, mask=slf_attn_mask)
+            enc_input, mask=slf_attn_mask)
         
         if non_pad_mask is not None:
             enc_output *= non_pad_mask
@@ -158,17 +158,122 @@ class FFTBlock(nn.Module):
         return enc_output, enc_slf_attn
 
 
-class DurationPredictor(nn.Module):
-    """ Duration Predictor """
+
+class Encoder(nn.Module):
+    def __init__(self, model_config):
+        super(Encoder, self).__init__()
+        
+        len_max_seq=model_config['max_seq_len']
+        n_position = len_max_seq + 1
+        n_layers = model_config['encoder_n_layer']
+        self.pad = model_config['PAD']
+
+        self.src_word_emb = nn.Embedding(
+            model_config['vocab_size'],
+            model_config['encoder_dim'],
+            padding_idx=model_config['PAD']
+        )
+
+        self.position_enc = nn.Embedding(
+            n_position,
+            model_config['encoder_dim'],
+            padding_idx=model_config['PAD']
+        )
+
+        self.layer_stack = nn.ModuleList([FFTBlock(
+            model_config,
+            model_config['encoder_dim'],
+            model_config['encoder_conv1d_filter_size'],
+            model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            dropout=model_config['dropout']
+        ) for _ in range(n_layers)])
+
+    def forward(self, src_seq, src_pos, return_attns=False):
+
+        enc_slf_attn_list = []
+
+        # -- Prepare masks
+        slf_attn_mask = utils.get_attn_key_pad_mask(seq_k=src_seq, seq_q=src_seq, pad=self.pad)
+        non_pad_mask = utils.get_non_pad_mask(src_seq, self.pad)
+        
+        # -- Forward
+        enc_output = self.src_word_emb(src_seq) + self.position_enc(src_pos)
+
+        for enc_layer in self.layer_stack:
+            enc_output, enc_slf_attn = enc_layer(
+                enc_output,
+                non_pad_mask=non_pad_mask,
+                slf_attn_mask=slf_attn_mask)
+            if return_attns:
+                enc_slf_attn_list += [enc_slf_attn]
+        
+
+        return enc_output, non_pad_mask
+
+
+class Decoder(nn.Module):
+    """ Decoder """
 
     def __init__(self, model_config):
-        super(DurationPredictor, self).__init__()
 
-        self.input_size = model_config.encoder_dim
-        self.filter_size = model_config.duration_predictor_filter_size
-        self.kernel = model_config.duration_predictor_kernel_size
-        self.conv_output_size = model_config.duration_predictor_filter_size
-        self.dropout = model_config.dropout
+        super(Decoder, self).__init__()
+
+        len_max_seq=model_config['max_seq_len']
+        n_position = len_max_seq + 1
+        n_layers = model_config['decoder_n_layer']
+        self.pad = model_config['PAD']
+
+        self.position_enc = nn.Embedding(
+            n_position,
+            model_config['encoder_dim'],
+            padding_idx=model_config['PAD'],
+        )
+
+        self.layer_stack = nn.ModuleList([FFTBlock(
+            model_config,
+            model_config['encoder_dim'],
+            model_config['encoder_conv1d_filter_size'],
+            model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            model_config['encoder_dim'] // model_config['encoder_head'],
+            dropout=model_config['dropout']
+        ) for _ in range(n_layers)])
+
+    def forward(self, enc_seq, enc_pos, return_attns=False):
+
+        dec_slf_attn_list = []
+
+        # -- Prepare masks
+        slf_attn_mask = utils.get_attn_key_pad_mask(seq_k=enc_pos, seq_q=enc_pos, pad=self.pad)
+        non_pad_mask = utils.get_non_pad_mask(enc_pos, self.pad)
+
+        # -- Forward
+        dec_output = enc_seq + self.position_enc(enc_pos)
+
+        for dec_layer in self.layer_stack:
+            dec_output, dec_slf_attn = dec_layer(
+                dec_output,
+                non_pad_mask=non_pad_mask,
+                slf_attn_mask=slf_attn_mask)
+            if return_attns:
+                dec_slf_attn_list += [dec_slf_attn]
+
+        return dec_output
+
+
+class VarianceAdaptorPredictor(nn.Module):
+    """ Duration/Pitch/Energy Predictor """
+
+    def __init__(self, model_config):
+        super(VarianceAdaptorPredictor, self).__init__()
+
+        self.input_size = model_config['encoder_dim']
+        self.filter_size = model_config['duration_predictor_filter_size']
+        self.kernel = model_config['duration_predictor_kernel_size']
+        self.conv_output_size = model_config['duration_predictor_filter_size']
+        self.dropout = model_config['dropout']
 
         self.conv_net = nn.Sequential(
             utils.Transpose(-1, -2),

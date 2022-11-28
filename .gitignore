@@ -109,6 +109,8 @@ saved/
 wandb/
 *.pt
 *.ipynb
+*.patch
+*.wav
 
 # container
 .devcontainer

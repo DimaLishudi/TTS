@@ -39,6 +39,7 @@ def inference(mel, waveglow, audio_path, sigma=1.0, sampling_rate=22050):
     audio = audio.cpu().numpy()
     audio = audio.astype('int16')
     write(audio_path, sampling_rate, audio)
+    return audio
 
 
 def test_speed(mel, waveglow, sigma=1.0, sampling_rate=22050):
