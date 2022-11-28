@@ -42,27 +42,25 @@ class TTSGenerator():
 
         # prepare inputs ====================================================================
 
-        if hasattr(self.config['generator'], 'results_dir'):
+        if 'results_dir' in self.config['generator']:
             self.res_dir = self.config['generator']['results_dir']
-        else:
-            self.res_dir = './results'
-        os.makedirs(self.res_dir, exist_ok=True)
+            os.makedirs(self.res_dir, exist_ok=True)
 
         self.text_list = list(self.config['generator']['texts'])
 
         # get alpha/pitch/energy for synthesis, else set to 1
         if 'alphas_list' in self.config['generator']:
-            self.alphas_list = torch.asarray(self.config['generator']['alphas_list'])
+            self.alphas_list = np.asarray(self.config['generator']['alphas_list'])
         else:
-            self.alphas_list = torch.ones(len(self.text_list), dtype=torch.long)
+            self.alphas_list = np.ones(len(self.text_list))
         if 'pitches_list' in self.config['generator']:
-            self.pitches_list = torch.asarray(self.config['generator']['pitches_list'])
+            self.pitches_list = np.asarray(self.config['generator']['pitches_list'])
         else:
-            self.pitches_list = torch.ones(len(self.text_list), dtype=torch.long)
+            self.pitches_list = np.ones(len(self.text_list))
         if 'energies_list' in self.config['generator']:
-            self.energies_list = torch.asarray(self.config['generator']['energies_list'])
+            self.energies_list = np.asarray(self.config['generator']['energies_list'])
         else:
-            self.energies_list = torch.ones(len(self.text_list), dtype=torch.long)
+            self.energies_list = np.ones(len(self.text_list))
 
         self.input_zip = zip(self.text_list, self.alphas_list, self.pitches_list, self.energies_list)
 

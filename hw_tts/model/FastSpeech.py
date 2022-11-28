@@ -3,46 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import layers
+from . import modules
 from . import utils
-
-
-
-class LengthRegulator(nn.Module):
-    """ Length Regulator """
-
-    def __init__(self, model_config):
-        super(LengthRegulator, self).__init__()
-        self.duration_predictor = layers.VarianceAdaptorPredictor(model_config)
-
-    def LR(self, x, duration_predictor_output, mel_max_length=None):
-        expand_max_len = torch.max(
-            torch.sum(duration_predictor_output, -1), -1)[0]
-        alignment = torch.zeros(duration_predictor_output.size(0),
-                                expand_max_len,
-                                duration_predictor_output.size(1)).numpy()
-        alignment = utils.create_alignment(alignment,
-                                     duration_predictor_output.cpu().numpy())
-        alignment = torch.from_numpy(alignment).to(x.device)
-
-        output = alignment @ x
-        if mel_max_length:
-            output = F.pad(
-                output, (0, 0, 0, mel_max_length-output.size(1), 0, 0))
-        return output
-
-    def forward(self, x, alpha=1.0, target=None, mel_max_length=None):
-        ### Your code here
-        duration_predictor_output = self.duration_predictor(x)
-
-        if target is not None:
-            output = self.LR(x, target, mel_max_length)
-            return output, duration_predictor_output
-        else:
-            duration_rounded = ((torch.exp(duration_predictor_output) - 1) * alpha + 0.5).int().clamp(min=0)
-            output = self.LR(x, duration_rounded, mel_max_length)
-            mel_pos = torch.arange(output.size(1)).unsqueeze(0).to(x.device) + 1
-            return output, mel_pos
 
 
 class FastSpeech(nn.Module):
@@ -52,9 +14,9 @@ class FastSpeech(nn.Module):
         super(FastSpeech, self).__init__()
         n_mels = 80
 
-        self.encoder = layers.Encoder(model_config)
-        self.length_regulator = LengthRegulator(model_config)
-        self.decoder = layers.Decoder(model_config)
+        self.encoder = modules.Encoder(model_config)
+        self.length_regulator = modules.LengthRegulator(model_config)
+        self.decoder = modules.Decoder(model_config)
 
         self.mel_linear = nn.Linear(model_config['decoder_dim'], n_mels)
 

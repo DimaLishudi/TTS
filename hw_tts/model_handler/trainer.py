@@ -58,11 +58,13 @@ class TTSTrainer(TTSGenerator):
                     max_mel_len = db["mel_max_len"]
 
                     # Forward
-                    mel_output, duration_predictor_output = self.model(character,
-                                                                src_pos,
-                                                                mel_pos=mel_pos,
-                                                                mel_max_length=max_mel_len,
-                                                                length_target=duration)
+                    mel_output, duration_predictor_output = self.model(
+                            character,
+                            src_pos,
+                            mel_pos=mel_pos,
+                            mel_max_length=max_mel_len,
+                            length_target=duration
+                    )
 
                     # Calc Loss: total, mel, duration, pitch, energy
                     total_loss, m_loss, d_loss, p_loss, e_loss = self.Loss(
