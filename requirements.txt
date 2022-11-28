@@ -1,5 +1,6 @@
 numpy
 pandas
+scipy
 sklearn
 librosa
 sox
@@ -12,6 +13,7 @@ torch_audiomentations
 unidecode
 inflect
 pyworld
+glob2
 
 gdown==4.5.4
 tqdm

@@ -3,10 +3,12 @@ import torch
 import hw_tts.dataset, hw_tts.model
 from hw_tts.logger import WanDBWriter
 from tqdm.auto import tqdm
-import os
+import glob, os
 
 from ..FS_utils import text, utils, waveglow
 
+import warnings
+from torch.serialization import SourceChangeWarning
 
 class TTSGenerator():
     """
@@ -14,6 +16,7 @@ class TTSGenerator():
         holds FastSpeech 1/2 TTS model and WaveGlow vocoder
     """
     def __init__(self, config, log=False, checkpoint_path=None):
+        
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -27,8 +30,11 @@ class TTSGenerator():
         self.model = self.model.to(self.device)
 
         if 'generator' in config:
+            warnings.filterwarnings("ignore", category=SourceChangeWarning)
             self.waveglow_model = utils.get_WaveGlow().to(self.device)
             self.waveglow_model.eval()
+            for f in glob.glob("*.patch"):
+                os.remove(f)
         
         self.current_step = 0
         self.logger = WanDBWriter(config) if log else None
