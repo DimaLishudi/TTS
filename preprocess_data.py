@@ -87,8 +87,13 @@ def preprocess():
     # mean and std are not used in model, as enegries and pitches are normalized, but we save them just in case
     energy_std = np.sqrt(energy_second_moment - energy_mean**2)
     pitch_std = np.sqrt(pitch_second_moment - pitch_mean**2)
+
+    energy_min = (energy_min - energy_mean) / energy_std
+    energy_max = (energy_max - energy_mean) / energy_std
+    pitch_min = (pitch_min - pitch_mean) / pitch_std
+    pitch_max = (pitch_max - pitch_mean) / pitch_std
     np.save("./data/energy_mean_std_min_max.npy", np.array([energy_mean, energy_std, energy_min, energy_max]))
-    np.save("./data/pitch_mean_std_min_max.npy", np.array([pitch_mean, pitch_std, pitch_min, pitch_max]))
+    np.save("./data/pitch_mean_std_min_max.npy" ,  np.array([pitch_mean, pitch_std, pitch_min, pitch_max]))
 
     # another cycle to save normalized energies and pitches
     for i in trange(len(wav_paths)):

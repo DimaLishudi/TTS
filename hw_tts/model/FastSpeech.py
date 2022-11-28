@@ -33,7 +33,7 @@ class FastSpeech(nn.Module):
             output = self.decoder(lr_output, mel_pos)
             output = self.mask_tensor(output, mel_pos, mel_max_length)
             output = self.mel_linear(output)
-            return output, duration_predictor_output
+            return output, duration_predictor_output, None, None # energy = None, pitch = None
         
         lr_output, mel_pos = self.length_regulator(encoder_out, alpha, length_target, mel_max_length)
         output = self.decoder(lr_output, mel_pos)

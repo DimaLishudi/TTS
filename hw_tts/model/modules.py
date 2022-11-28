@@ -124,7 +124,7 @@ class LengthRegulator(nn.Module):
                                 expand_max_len,
                                 duration_predictor_output.size(1)).numpy()
         alignment = utils.create_alignment(alignment,
-                                     duration_predictor_output.cpu().numpy())
+                                           duration_predictor_output.cpu().numpy())
         alignment = torch.from_numpy(alignment).to(x.device)
 
         output = alignment @ x
@@ -134,7 +134,6 @@ class LengthRegulator(nn.Module):
         return output
 
     def forward(self, x, alpha=1.0, target=None, mel_max_length=None):
-        ### Your code here
         duration_predictor_output = self.duration_predictor(x)
 
         if target is not None:
@@ -145,38 +144,3 @@ class LengthRegulator(nn.Module):
             output = self.LR(x, duration_rounded, mel_max_length)
             mel_pos = torch.arange(output.size(1)).unsqueeze(0).to(x.device) + 1
             return output, mel_pos
-
-
-class VarianceAdaptor(nn.Module):
-    """ VarianceAdaptor """
-
-    def __init__(self, model_config):
-        super(VarianceAdaptor, self).__init__()
-        self.LR = LengthRegulator(model_config)
-
-    def forward(self, x, alpha=1.0, target=None, mel_max_length=None):
-        ### Your code here
-        duration_predictor_output = self.duration_predictor(x)
-
-        if target is not None:
-            output = self.LR(x, target, mel_max_length)
-            return output, duration_predictor_output
-        else:
-            duration_rounded = ((torch.exp(duration_predictor_output) - 1) * alpha + 0.5).int().clamp(min=0)
-            output = self.LR(x, duration_rounded, mel_max_length)
-            mel_pos = torch.arange(output.size(1)).unsqueeze(0).to(x.device) + 1
-            return output, mel_pos
-
-    def forward(self, src_seq, src_pos, mel_pos=None, mel_max_length=None, length_target=None, alpha=1.0, pitch=1.0, energy=1.0, **kwargs):
-        encoder_out, non_pad_mask = self.encoder(src_seq, src_pos)
-        if self.training:
-            lr_output, duration_predictor_output = self.variance_adaptor(encoder_out, alpha, pitch, energy, length_target, mel_max_length)
-            output = self.decoder(lr_output, mel_pos)
-            output = self.mask_tensor(output, mel_pos, mel_max_length)
-            output = self.mel_linear(output)
-            return output, duration_predictor_output
-        
-        lr_output, mel_pos = self.variance_adaptor(encoder_out, alpha, pitch, energy, length_target, mel_max_length)
-        output = self.decoder(lr_output, mel_pos)
-        output = self.mel_linear(output)
-        return output

@@ -1,9 +1,12 @@
 {
-    "name": "FastSpeech1",
+    "name": "FastSpeech2",
     "sample_rate" : 22050,
     "model" : {
-      "type" : "FastSpeech",
+      "type" : "FastSpeech2",
       "args" : {
+        "energy_stats_path" : "./data/energy_mean_std_min_max.npy",
+        "pitch_stats_path" : "./data/pitch_mean_std_min_max.npy",
+        "n_bins" : 256,
         "vocab_size" : 300,
         "max_seq_len" : 3000,
         "encoder_dim" : 256,
@@ -48,17 +51,17 @@
       "weight_decay": 1e-6,
       "betas" : [0.9, 0.98]
     },
-    "loss_type": "FSLoss",
+    "loss_type": "FS2Loss",
     "lr_scheduler": {
       "anneal_strategy": "cos",
       "pct_start": 0.1
     },
     "trainer": {
-      "epochs" : 100,
+      "epochs" : 62,
       "learning_rate" : 1e-3,
       "save_dir" : "fs2_saved/",
-      "save_step" : 6000,
-      "val_step" : 3000,
+      "save_step" : 50000,
+      "val_step" : 5000,
       "verbosity" : 2,
       "grad_clip_thresh" : 1.0
     },

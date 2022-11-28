@@ -28,7 +28,7 @@ class TTSTrainer(TTSGenerator):
             "max_lr": config['trainer']['learning_rate'],
         }
         self.scheduler = OneCycleLR(self.optimizer, **scheduler_kwargs)
-        os.makedirs(self.config['trainer']['save_dir'], exists_ok=True)
+        os.makedirs(self.config['trainer']['save_dir'], exist_ok=True)
 
 
     def train_loop(self):
@@ -51,28 +51,31 @@ class TTSTrainer(TTSGenerator):
                     self.logger.set_step(self.current_step)
 
                     # Get Data
-                    character = db["text"].long().to(device)
-                    mel_target = db["mel_target"].float().to(device)
-                    duration = db["duration"].int().to(device)
-                    mel_pos = db["mel_pos"].long().to(device)
-                    src_pos = db["src_pos"].long().to(device)
+                    character   = db["text"].long().to(device)
+                    mel_target  = db["mel_target"].float().to(device)
+                    duration    = db["duration"].int().to(device)
+                    pitch       = db["pitch"].float().to(device)
+                    energy      = db["energy"].float().to(device)
+                    mel_pos     = db["mel_pos"].long().to(device)
+                    src_pos     = db["src_pos"].long().to(device)
                     max_mel_len = db["mel_max_len"]
 
                     # Forward
-                    mel_output, duration_predictor_output = self.model(
-                            character,
-                            src_pos,
-                            mel_pos=mel_pos,
-                            mel_max_length=max_mel_len,
-                            length_target=duration
+                    mel_output, duration_predictor_output, pitch_predicted, energy_predicted = self.model(
+                        character, src_pos, mel_pos=mel_pos, mel_max_length=max_mel_len,
+                        length_target=duration, pitch_target=pitch, energy_target=energy
                     )
 
                     # Calc Loss: total, mel, duration, pitch, energy
                     total_loss, m_loss, d_loss, p_loss, e_loss = self.Loss(
-                            mel_output,
-                            duration_predictor_output,
-                            mel_target,
-                            duration
+                            mel=mel_output,
+                            mel_target=mel_target,
+                            log_duration_predicted=duration_predictor_output,
+                            duration_predictor_target=duration,
+                            log_pitch_predicted=pitch_predicted,
+                            log_pitch_target=pitch,
+                            energy_predicted=energy_predicted,
+                            energy_target=energy,
                     )
 
                     # Logger
