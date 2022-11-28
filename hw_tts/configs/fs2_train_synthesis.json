@@ -1,0 +1,94 @@
+{
+    "name": "FastSpeech2",
+    "sample_rate" : 22050,
+    "model" : {
+      "type" : "FastSpeech2",
+      "args" : {
+        "energy_stats_path" : "./data/energy_mean_std_min_max.npy",
+        "pitch_stats_path" : "./data/pitch_mean_std_min_max.npy",
+        "n_bins" : 256,
+        "vocab_size" : 300,
+        "max_seq_len" : 3000,
+        "encoder_dim" : 256,
+        "encoder_n_layer" : 4,
+        "encoder_head" : 2,
+        "encoder_conv1d_filter_size" : 1024,
+        "decoder_dim" : 256,
+        "decoder_n_layer" : 4,
+        "decoder_head" : 2,
+        "decoder_conv1d_filter_size" : 1024,
+
+        "fft_conv1d_kernel" : [9, 1],
+        "fft_conv1d_padding" : [4, 0],
+
+        "duration_predictor_filter_size" : 256,
+        "duration_predictor_kernel_size" : 3,
+        "dropout" : 0.1,
+
+        "PAD" : 0,
+        "UNK" : 1,
+        "BOS" : 2,
+        "EOS" : 3,
+
+        "PAD_WORD" : "<blank>",
+        "UNK_WORD" : "<unk>",
+        "BOS_WORD" : "<s>",
+        "EOS_WORD" : "</s>"
+      }
+    },
+    "dataset": {
+        "batch_size" : 16,
+        "batch_expand_size" : 4,
+        "num_workers": 1,
+        "mel_ground_truth" : "./data/mels",
+        "pitch_ground_truth" : "./data/pitches",
+        "energy_ground_truth" : "./data/energies",
+        "alignment_path" : "./data/alignments",
+        "data_path" : "./data/train.txt",
+        "text_cleaners" : ["english_cleaners"]
+    },
+    "optimizer": {
+      "weight_decay": 1e-6,
+      "betas" : [0.9, 0.98]
+    },
+    "loss_type": "FS2Loss",
+    "lr_scheduler": {
+      "anneal_strategy": "cos",
+      "pct_start": 0.1
+    },
+    "trainer": {
+      "epochs" : 25,
+      "learning_rate" : 1e-3,
+      "save_dir" : "fs2_saved/",
+      "save_step" : 4000,
+      "val_step"  : 4000,
+      "verbosity" : 2,
+      "grad_clip_thresh" : 1.0
+    },
+    "generator" : {
+      "results_dir" : "./fs2_results",
+      "texts" : [
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space"
+      ],
+      "alphas_list" :   [1.0, 0.8, 1.2, 1.0, 1.0, 1.0, 1.0, 0.8, 1.2, 1.0, 0.8, 1.2, 1.0, 1.0, 1.0, 1.0, 0.8, 1.2, 1.0, 0.8, 1.2, 1.0, 1.0, 1.0, 1.0, 0.8, 1.2],
+      "pitches_list" :  [1.0, 1.0, 1.0, 0.8, 1.2, 1.0, 1.0, 0.8, 1.2, 1.0, 1.0, 1.0, 0.8, 1.2, 1.0, 1.0, 0.8, 1.2, 1.0, 1.0, 1.0, 0.8, 1.2, 1.0, 1.0, 0.8, 1.2],
+      "energies_list" : [1.0, 1.0, 1.0, 1.0, 1.0, 0.8, 1.2, 0.8, 1.2, 1.0, 1.0, 1.0, 1.0, 1.0, 0.8, 1.2, 0.8, 1.2, 1.0, 1.0, 1.0, 1.0, 1.0, 0.8, 1.2, 0.8, 1.2]
+    },
+    "logger" : {
+      "wandb_project": "TTS"
+    }
+}

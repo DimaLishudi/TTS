@@ -16,7 +16,7 @@ def main(config_path, weights):
     with open(config_path) as config_file:
         config = json.load(config_file)
     generator = TTSGenerator(config, checkpoint_path=weights)
-    generator.generator()
+    generator.generate()
 
 
 if __name__ == '__main__':

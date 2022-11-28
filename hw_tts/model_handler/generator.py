@@ -20,12 +20,11 @@ class TTSGenerator():
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.dataloader = hw_tts.dataset.get_LJSpeech_dataloader(config['dataset'])
         # prepare fastspeech model, vocoder ================================================
         # TODO: alternative checkpoint in config
         self.model = getattr(hw_tts.model, config['model']['type'])(config['model']['args'])
         if checkpoint_path is not None:
-            self.model.load_state_dict(torch.load(checkpoint_path))
+            self.model.load_state_dict(torch.load(checkpoint_path)['model'])
 
         self.model = self.model.to(self.device)
 
@@ -106,10 +105,11 @@ class TTSGenerator():
                 mel, self.waveglow_model,
                 res_path
             )
-            name = f'input_{i}_d={alpha}_p={pitch}_e={energy}'
-            caption = input + '\t' + f'd={alpha}_p={pitch}_e={energy}'
-            self.logger.add_audio('audio ' + name, res_path, caption=caption)
-            self.logger.add_spectrogram('spec ' + name, mel, caption=caption)
+            if self.logger is not None:
+                name = f'input_{i}_d={alpha}_p={pitch}_e={energy}'
+                caption = input + '\t' + f'd={alpha}_p={pitch}_e={energy}'
+                self.logger.add_audio('audio ' + name, res_path, caption=caption)
+                self.logger.add_spectrogram('spec ' + name, mel, caption=caption)
         
         if 'results_dir' not in self.config['generator']:
             os.remove('./tmp.wav')
