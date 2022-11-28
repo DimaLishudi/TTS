@@ -80,14 +80,50 @@ def preprocess():
 
         total_len += cur_len
 
-        # save results
+        # save mels
         np.save(f"./data/mels/ljspeech-mel-{i:05}.npy", np.asarray(mel).T)
-        np.save(f"./data/energies/ljspeech-energy-{i:05}.npy", energy)
-        np.save(f"./data/pitches/ljspeech-pitch-{i:05}.npy", pitch)
+
+    # calc std and save statistics
+    # mean and std are not used in model, as enegries and pitches are normalized, but we save them just in case
     energy_std = np.sqrt(energy_second_moment - energy_mean**2)
     pitch_std = np.sqrt(pitch_second_moment - pitch_mean**2)
     np.save("./data/energy_mean_std_min_max.npy", np.array([energy_mean, energy_std, energy_min, energy_max]))
     np.save("./data/pitch_mean_std_min_max.npy", np.array([pitch_mean, pitch_std, pitch_min, pitch_max]))
+
+    # another cycle to save normalized energies and pitches
+    for i in trange(len(wav_paths)):
+        # mels and energy
+        wav, sr = torchaudio.load(wav_dir_path + wav_paths[i])
+        wav = wav.squeeze()
+        assert sr == sample_rate, f"sample rate expected to be {sample_rate}"
+        spec = spec_transform(wav)
+        energy = np.asarray(torch.norm(spec, p=2, dim=-2))
+
+        # calculate pitch
+        # borrowed from https://github.com/ming024/FastSpeech2/blob/master/preprocessor/preprocessor.py
+
+        wav = np.asarray(wav)
+        pitch, t = pw.dio(
+            wav.astype(np.float64),
+            sample_rate,
+            frame_period=hop_length / sample_rate * 1000, # 1000 ms in sec
+        )
+        pitch = pw.stonemask(wav.astype(np.float64), pitch, t, sample_rate)
+
+        # linearly interpolate zeroes in pitch and take log
+
+        zero_idx = pitch==0
+        pitch[zero_idx] = np.interp(x=np.argwhere(zero_idx).squeeze(), xp=np.argwhere(~zero_idx).squeeze(), fp=pitch[~zero_idx])
+        pitch = np.log(pitch)
+
+        # normalize
+
+        pitch = (pitch - pitch_mean) / pitch_std
+        energy = (energy - energy_mean) / energy_std
+
+        # save results
+        np.save(f"./data/energies/ljspeech-energy-{i:05}.npy", energy)
+        np.save(f"./data/pitches/ljspeech-pitch-{i:05}.npy", pitch)
 
 
 if __name__ == "__main__":

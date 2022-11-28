@@ -54,7 +54,7 @@
       "pct_start": 0.1
     },
     "trainer": {
-      "epochs" : 20,
+      "epochs" : 10,
       "learning_rate" : 1e-3,
       "save_dir" : "saved/",
       "save_step" : 2000,
@@ -66,12 +66,18 @@
       "results_dir" : "./results",
       "texts" : [
         "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+        "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
         "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space",
+        "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space",
         "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space"
       ],
-      "alphas_list" : [0.8, 1, 1.2],
-      "pitches_list" : [0.8, 1, 1.2],
-      "energies_list" : [0.8, 1, 1.2]
+      "alphas_list" :   [0.8, 1.0, 1.2, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+      "pitches_list" :  [1.0, 1.0, 1.0, 0.8, 1.0, 1.2, 1.0, 1.0, 1.0],
+      "energies_list" : [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.8, 1.0, 1.2]
     },
     "logger" : {
       "wandb_project": "TTS"

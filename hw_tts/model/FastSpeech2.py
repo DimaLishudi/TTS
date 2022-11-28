@@ -15,7 +15,7 @@ class FastSpeech2(nn.Module):
         n_mels = 80
 
         self.encoder = modules.Encoder(model_config)
-        self.VarianceAdaptor = modules.VarianceAdaptor(model_config)
+        self.variance_adaptor = modules.VarianceAdaptor(model_config)
         self.decoder = modules.Decoder(model_config)
 
         self.mel_linear = nn.Linear(model_config['decoder_dim'], n_mels)
@@ -26,16 +26,16 @@ class FastSpeech2(nn.Module):
         mask = mask.unsqueeze(-1).expand(-1, -1, mel_output.size(-1))
         return mel_output.masked_fill(mask, 0.)
 
-    def forward(self, src_seq, src_pos, mel_pos=None, mel_max_length=None, length_target=None, alpha=1.0, **kwargs):
+    def forward(self, src_seq, src_pos, mel_pos=None, mel_max_length=None, length_target=None, alpha=1.0, pitch=1.0, energy=1.0, **kwargs):
         encoder_out, non_pad_mask = self.encoder(src_seq, src_pos)
         if self.training:
-            lr_output, duration_predictor_output = self.length_regulator(encoder_out, alpha, length_target, mel_max_length)
+            lr_output, duration_predictor_output = self.variance_adaptor(encoder_out, alpha, pitch, energy, length_target, mel_max_length)
             output = self.decoder(lr_output, mel_pos)
             output = self.mask_tensor(output, mel_pos, mel_max_length)
             output = self.mel_linear(output)
             return output, duration_predictor_output
         
-        lr_output, mel_pos = self.length_regulator(encoder_out, alpha, length_target, mel_max_length)
+        lr_output, mel_pos = self.variance_adaptor(encoder_out, alpha, pitch, energy, length_target, mel_max_length)
         output = self.decoder(lr_output, mel_pos)
         output = self.mel_linear(output)
         return output
