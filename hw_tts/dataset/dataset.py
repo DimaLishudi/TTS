@@ -104,10 +104,10 @@ def get_data_to_buffer(dataset_config):
 
         pitch_gt_name = os.path.join(
             dataset_config['pitch_ground_truth'], "ljspeech-pitch-%05d.npy" % (i))
-        pitch_gt_target = np.load(pitch_gt_name)
+        pitch = np.load(pitch_gt_name)
         energy_gt_name = os.path.join(
             dataset_config['energy_ground_truth'], "ljspeech-energy-%05d.npy" % (i))
-        energy_gt_target = np.load(energy_gt_name)
+        energy = np.load(energy_gt_name)
 
         character = torch.from_numpy(character)
         duration = torch.from_numpy(duration)
@@ -116,8 +116,8 @@ def get_data_to_buffer(dataset_config):
         buffer.append({"text": character,
                        "duration": duration,
                        "mel_target": mel_gt_target,
-                       "pitch_target" : pitch_gt_target,
-                       "energy_target" : energy_gt_target    
+                       "pitch" : pitch,
+                       "energy" : energy    
         })
 
     end = perf_counter()
@@ -130,6 +130,10 @@ def reprocess_tensor(batch, cut_list):
     texts = [batch[ind]["text"] for ind in cut_list]
     mel_targets = [batch[ind]["mel_target"] for ind in cut_list]
     durations = [batch[ind]["duration"] for ind in cut_list]
+    pitches = [batch[ind]["pitch"] for ind in cut_list]
+    energies = [batch[ind]["energy"] for ind in cut_list]
+
+    
 
     length_text = np.array([])
     for text in texts:
@@ -153,15 +157,25 @@ def reprocess_tensor(batch, cut_list):
                               (0, max_mel_len-int(length_mel_row)), 'constant'))
     mel_pos = torch.from_numpy(np.array(mel_pos))
 
+    
+    for length_mel_row in length_mel:
+        mel_pos.append(np.pad([i+1 for i in range(int(length_mel_row))],
+                              (0, max_mel_len-int(length_mel_row)), 'constant'))
+    mel_pos = torch.from_numpy(np.array(mel_pos))
+
     texts = pad_1D_tensor(texts)
     durations = pad_1D_tensor(durations)
+    pitches = pad_1D_tensor(pitches)
+    energies= pad_1D_tensor(energies)
     mel_targets = pad_2D_tensor(mel_targets)
 
     out = {"text": texts,
-           "mel_target": mel_targets,
-           "duration": durations,
-           "mel_pos": mel_pos,
-           "src_pos": src_pos,
+           "mel_target" : mel_targets,
+           "duration"   : durations,
+           "energy"     : energies,
+           "pitch"      : pitches,
+           "mel_pos"    : mel_pos,
+           "src_pos"    : src_pos,
            "mel_max_len": max_mel_len}
 
     return out
